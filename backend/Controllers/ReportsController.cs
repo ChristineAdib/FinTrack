@@ -1,4 +1,5 @@
 using FinTrack.Api.DTOs;
+using FinTrack.Api.Models;
 using FinTrack.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -28,6 +29,14 @@ public class ReportsController : ControllerBase
     public async Task<IActionResult> GetExpenseBreakdown([FromQuery] ReportFilterRequest filter)
     {
         var breakdown = await _reportService.GetExpenseBreakdownAsync(filter);
+        return Ok(breakdown);
+    }
+
+    [HttpGet("category-breakdown")]
+    public async Task<IActionResult> GetCategoryBreakdown([FromQuery] ReportFilterRequest filter, [FromQuery] TransactionType? type)
+    {
+        var targetType = type ?? TransactionType.Expense;
+        var breakdown = await _reportService.GetCategoryBreakdownAsync(filter, targetType);
         return Ok(breakdown);
     }
 

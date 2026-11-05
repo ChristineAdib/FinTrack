@@ -47,10 +47,10 @@ public class ReportService : IReportService
 
         return (filter.Period?.ToLower()) switch
         {
-            "7d" => (now.Date.AddDays(-6), now.Date.AddDays(1).AddTicks(-1), "Last 7 Days"),
-            "30d" => (now.Date.AddDays(-29), now.Date.AddDays(1).AddTicks(-1), "Last 30 Days"),
-            "6m" => (now.Date.AddMonths(-6), now.Date.AddDays(1).AddTicks(-1), "Last 6 Months"),
-            "1y" => (now.Date.AddYears(-1), now.Date.AddDays(1).AddTicks(-1), "Last 12 Months"),
+            "7d" => (now.Date.AddDays(-7), null, "Last 7 Days"),
+            "30d" => (now.Date.AddDays(-30), null, "Last 30 Days"),
+            "6m" => (now.Date.AddMonths(-6), null, "Last 6 Months"),
+            "1y" => (now.Date.AddYears(-1), null, "Last 12 Months"),
             "this-year" => (new DateTime(now.Year, 1, 1), new DateTime(now.Year, 12, 31, 23, 59, 59), $"{now.Year}"),
             "this-month" => (new DateTime(now.Year, now.Month, 1), new DateTime(now.Year, now.Month, DateTime.DaysInMonth(now.Year, now.Month), 23, 59, 59), $"{now:MMMM yyyy}"),
             _ => (null, null, "All Time")
@@ -101,20 +101,20 @@ public class ReportService : IReportService
         };
     }
 
-    public async Task<IEnumerable<CategoryBreakdownDto>> GetExpenseBreakdownAsync(ReportFilterRequest filter)
+    public async Task<IEnumerable<CategoryBreakdownDto>> GetCategoryBreakdownAsync(ReportFilterRequest filter, TransactionType type)
     {
         var userId = GetRequiredUserId();
         var (start, end, _) = ResolveDateRange(filter);
 
         var query = _context.Transactions.AsNoTracking()
-            .Where(t => t.UserId == userId && t.Type == TransactionType.Expense);
+            .Where(t => t.UserId == userId && t.Type == type);
 
         if (start.HasValue)
             query = query.Where(t => t.TransactionDate >= start.Value);
         if (end.HasValue)
             query = query.Where(t => t.TransactionDate <= end.Value);
 
-        var expenseList = await query
+        var list = await query
             .GroupBy(t => t.Category)
             .Select(g => new
             {
@@ -125,16 +125,21 @@ public class ReportService : IReportService
             .OrderByDescending(x => x.TotalAmount)
             .ToListAsync();
 
-        var grandTotal = expenseList.Sum(x => x.TotalAmount);
+        var grandTotal = list.Sum(x => x.TotalAmount);
 
-        return expenseList.Select(e => new CategoryBreakdownDto
+        return list.Select(e => new CategoryBreakdownDto
         {
             Category = e.Category,
-            Type = "Expense",
+            Type = type.ToString(),
             TotalAmount = Math.Round(e.TotalAmount, 2),
             Percentage = grandTotal > 0 ? Math.Round((e.TotalAmount / grandTotal) * 100m, 2) : 0m,
             TransactionCount = e.Count
         }).ToList();
+    }
+
+    public Task<IEnumerable<CategoryBreakdownDto>> GetExpenseBreakdownAsync(ReportFilterRequest filter)
+    {
+        return GetCategoryBreakdownAsync(filter, TransactionType.Expense);
     }
 
     public async Task<IEnumerable<MonthlyTrendDto>> GetMonthlyTrendAsync(ReportFilterRequest filter)

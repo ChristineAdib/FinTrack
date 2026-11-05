@@ -43,6 +43,14 @@ export class ReportService {
     return this.http.get<CategoryBreakdown[]>(`${this.apiUrl}/expense-breakdown`, { params });
   }
 
+  getCategoryBreakdown(filter: ReportFilter = {}, type: 'Expense' | 'Income' = 'Expense'): Observable<CategoryBreakdown[]> {
+    let params = this.buildParams(filter);
+    if (type) {
+      params = params.set('type', type);
+    }
+    return this.http.get<CategoryBreakdown[]>(`${this.apiUrl}/category-breakdown`, { params });
+  }
+
   getMonthlyTrend(filter: ReportFilter = {}): Observable<MonthlyTrend[]> {
     const params = this.buildParams(filter);
     return this.http.get<MonthlyTrend[]>(`${this.apiUrl}/monthly-trend`, { params });
