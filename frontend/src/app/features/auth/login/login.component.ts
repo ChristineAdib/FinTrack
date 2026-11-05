@@ -78,6 +78,14 @@ import { NotificationComponent } from '../../../shared/components/notification/n
               Sign In to FinTrack
             }
           </button>
+
+          <button type="button" class="btn btn-secondary btn-demo" (click)="fillDemoCredentials()">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"/>
+              <path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"/>
+            </svg>
+            Quick Sign In with Demo Account
+          </button>
         </form>
 
         <div class="auth-footer">
@@ -181,6 +189,21 @@ import { NotificationComponent } from '../../../shared/components/notification/n
       color: var(--primary);
     }
 
+    .btn-demo {
+      width: 100%;
+      padding: 0.65rem;
+      font-size: 0.875rem;
+      margin-top: 0.5rem;
+      border-style: dashed;
+      color: var(--primary);
+      border-color: var(--accent-sage);
+    }
+
+    .btn-demo:hover {
+      background-color: var(--primary-light);
+      border-color: var(--primary);
+    }
+
     .spinner {
       width: 14px;
       height: 14px;
@@ -209,6 +232,14 @@ export class LoginComponent {
     email: ['', [Validators.required, Validators.email]],
     password: ['', [Validators.required]]
   });
+
+  fillDemoCredentials(): void {
+    this.loginForm.setValue({
+      email: 'demo@fintrack.app',
+      password: 'Password123!'
+    });
+    this.onSubmit();
+  }
 
   onSubmit(): void {
     if (this.loginForm.invalid) {
