@@ -15,6 +15,7 @@ import { CategoryBreakdown, FinancialSummary, MonthlyTrend, ReportFilter } from 
 import { CurrencyEgpPipe } from '../../shared/pipes/currency-egp.pipe';
 import { StatCardComponent } from '../../shared/components/stat-card/stat-card.component';
 import { EmptyStateComponent } from '../../shared/components/empty-state/empty-state.component';
+import { TransactionFormModalComponent } from '../transactions/transaction-form-modal/transaction-form-modal.component';
 
 Chart.register(...registerables);
 
@@ -26,7 +27,8 @@ Chart.register(...registerables);
     FormsModule,
     CurrencyEgpPipe,
     StatCardComponent,
-    EmptyStateComponent
+    EmptyStateComponent,
+    TransactionFormModalComponent
   ],
   template: `
     <div class="reports-container">
@@ -34,8 +36,16 @@ Chart.register(...registerables);
       <div class="reports-header">
         <div>
           <h2 class="section-title">Financial Reports & Analytics</h2>
-          <p class="section-subtitle">Comprehensive breakdown of your capital growth, spending distribution, and trajectories</p>
+          <p class="section-subtitle">Comprehensive breakdown of your capital growth, category distribution, and trajectories</p>
         </div>
+
+        <button type="button" class="btn btn-primary" (click)="openAddModal()">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>
+          Record Transaction
+        </button>
       </div>
 
       <!-- Filters & Period Bar -->
@@ -162,8 +172,28 @@ Chart.register(...registerables);
         <div class="card chart-card">
           <div class="card-header">
             <div>
-              <h3 class="card-title">Expense Distribution</h3>
-              <p class="card-subtitle">Relative proportion of expenses per category</p>
+              <h3 class="card-title">{{ breakdownType() === 'Expense' ? 'Expense Distribution' : 'Income Distribution' }}</h3>
+              <p class="card-subtitle">Proportion of {{ breakdownType().toLowerCase() }}s per category</p>
+            </div>
+
+            <!-- Dynamic Category Toggle Pill -->
+            <div class="breakdown-toggle">
+              <button
+                type="button"
+                class="toggle-btn"
+                [class.active-expense]="breakdownType() === 'Expense'"
+                (click)="setBreakdownType('Expense')"
+              >
+                Expenses
+              </button>
+              <button
+                type="button"
+                class="toggle-btn"
+                [class.active-income]="breakdownType() === 'Income'"
+                (click)="setBreakdownType('Income')"
+              >
+                Income
+              </button>
             </div>
           </div>
 
@@ -174,7 +204,7 @@ Chart.register(...registerables);
               </div>
             } @else {
               <div class="chart-empty">
-                <p>No recorded expenses in this period.</p>
+                <p>No recorded {{ breakdownType().toLowerCase() }}s in this period.</p>
               </div>
             }
           </div>
@@ -186,19 +216,43 @@ Chart.register(...registerables);
         <div class="card-header p-header">
           <div>
             <h3 class="card-title">Category Audit & Allocation</h3>
-            <p class="card-subtitle">Exact figures and percentage breakdown of expenses</p>
+            <p class="card-subtitle">Exact figures and percentage breakdown of {{ breakdownType().toLowerCase() }}s</p>
           </div>
-          <span class="badge badge-expense">
-            {{ breakdown().length }} Active Categories
-          </span>
+
+          <div class="table-header-right">
+            <!-- Dynamic Table Category Toggle -->
+            <div class="breakdown-toggle">
+              <button
+                type="button"
+                class="toggle-btn"
+                [class.active-expense]="breakdownType() === 'Expense'"
+                (click)="setBreakdownType('Expense')"
+              >
+                Expenses
+              </button>
+              <button
+                type="button"
+                class="toggle-btn"
+                [class.active-income]="breakdownType() === 'Income'"
+                (click)="setBreakdownType('Income')"
+              >
+                Income
+              </button>
+            </div>
+
+            <span class="badge" [ngClass]="breakdownType() === 'Expense' ? 'badge-expense' : 'badge-income'">
+              {{ breakdown().length }} Active Categories
+            </span>
+          </div>
         </div>
 
         @if (breakdown().length === 0) {
           <div class="empty-padded">
             <app-empty-state
-              title="No Expense Data for this Period"
-              description="Switch your date filter or log expenses to see your detailed breakdown here."
-              [actionText]="undefined"
+              [title]="'No ' + breakdownType() + ' Data for this Period'"
+              [description]="'Switch the toggle between Expenses and Income, change your date filter, or record a new transaction to populate this audit table.'"
+              [actionText]="'Record ' + breakdownType()"
+              (action)="openAddModal()"
             ></app-empty-state>
           </div>
         } @else {
@@ -217,17 +271,21 @@ Chart.register(...registerables);
                 @for (item of breakdown(); track item.category) {
                   <tr>
                     <td class="category-name-cell">
-                      <span class="category-color-pill"></span>
+                      <span class="category-color-pill" [style.background-color]="breakdownType() === 'Income' ? 'var(--income)' : 'var(--expense)'"></span>
                       <span class="font-medium">{{ item.category }}</span>
                     </td>
                     <td class="text-center">{{ item.transactionCount }}</td>
                     <td class="progress-cell">
                       <div class="progress-track">
-                        <div class="progress-fill" [style.width.%]="item.percentage"></div>
+                        <div
+                          class="progress-fill"
+                          [style.width.%]="item.percentage"
+                          [style.background-color]="breakdownType() === 'Income' ? 'var(--income)' : 'var(--expense)'"
+                        ></div>
                       </div>
                     </td>
                     <td class="text-right font-medium">{{ item.percentage }}%</td>
-                    <td class="text-right font-bold expense-amount">
+                    <td class="text-right font-bold" [style.color]="breakdownType() === 'Income' ? 'var(--income)' : 'var(--expense)'">
                       {{ item.totalAmount | currencyEgp }}
                     </td>
                   </tr>
@@ -235,12 +293,12 @@ Chart.register(...registerables);
               </tbody>
               <tfoot>
                 <tr class="table-total-row">
-                  <td class="font-bold">Total Expenses</td>
-                  <td class="text-center font-bold">{{ totalExpenseTransactions() }}</td>
+                  <td class="font-bold">Total {{ breakdownType() === 'Expense' ? 'Expenses' : 'Income' }}</td>
+                  <td class="text-center font-bold">{{ totalTransactions() }}</td>
                   <td></td>
                   <td class="text-right font-bold">100.00%</td>
-                  <td class="text-right font-bold expense-amount">
-                    {{ summary()?.totalExpenses | currencyEgp }}
+                  <td class="text-right font-bold" [style.color]="breakdownType() === 'Income' ? 'var(--income)' : 'var(--expense)'">
+                    {{ (breakdownType() === 'Expense' ? summary()?.totalExpenses : summary()?.totalIncome) | currencyEgp }}
                   </td>
                 </tr>
               </tfoot>
@@ -248,6 +306,13 @@ Chart.register(...registerables);
           </div>
         }
       </div>
+
+      <!-- Add Transaction Modal -->
+      <app-transaction-form-modal
+        [isOpen]="addModalOpen()"
+        (close)="closeAddModal()"
+        (saved)="onTransactionSaved()"
+      ></app-transaction-form-modal>
     </div>
   `,
   styles: [`
@@ -255,6 +320,14 @@ Chart.register(...registerables);
       display: flex;
       flex-direction: column;
       gap: 1.5rem;
+    }
+
+    .reports-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
     }
 
     .section-title {
@@ -386,6 +459,39 @@ Chart.register(...registerables);
       text-align: center;
     }
 
+    .breakdown-toggle {
+      display: flex;
+      background-color: var(--bg-sidebar);
+      padding: 0.2rem;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      gap: 0.2rem;
+    }
+
+    .toggle-btn {
+      background: transparent;
+      border: none;
+      padding: 0.25rem 0.65rem;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .toggle-btn.active-expense {
+      background: var(--bg-surface);
+      color: var(--expense);
+      box-shadow: var(--shadow-xs);
+    }
+
+    .toggle-btn.active-income {
+      background: var(--bg-surface);
+      color: var(--income);
+      box-shadow: var(--shadow-xs);
+    }
+
     .table-card {
       padding: 0;
       overflow: hidden;
@@ -395,6 +501,17 @@ Chart.register(...registerables);
       padding: 1.25rem 1.5rem 1rem;
       margin-bottom: 0;
       border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .table-header-right {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
     }
 
     .empty-padded {
@@ -440,7 +557,6 @@ Chart.register(...registerables);
       width: 8px;
       height: 8px;
       border-radius: 50%;
-      background-color: var(--expense);
     }
 
     .progress-cell {
@@ -457,13 +573,8 @@ Chart.register(...registerables);
 
     .progress-fill {
       height: 100%;
-      background-color: var(--expense);
       border-radius: 9999px;
       transition: width 0.3s ease;
-    }
-
-    .expense-amount {
-      color: var(--expense);
     }
 
     .table-total-row {
@@ -516,10 +627,14 @@ export class ReportsComponent implements OnInit, OnDestroy {
   selectedYear = new Date().getFullYear();
   availableYears = [2026, 2025, 2024];
 
+  breakdownType = signal<'Expense' | 'Income'>('Expense');
+
   summary = signal<FinancialSummary | null>(null);
   breakdown = signal<CategoryBreakdown[]>([]);
   trends = signal<MonthlyTrend[]>([]);
   hasTrendsData = signal(false);
+
+  addModalOpen = signal(false);
 
   private trendChart?: Chart;
   private breakdownChart?: Chart;
@@ -535,6 +650,14 @@ export class ReportsComponent implements OnInit, OnDestroy {
       '#8FAE9B',
       '#2F6B57',
       '#4F8A68',
+      '#718078',
+      '#9CB7A8'
+    ],
+    incomeDoughnutColors: [
+      '#4F8A68',
+      '#2F6B57',
+      '#8FAE9B',
+      '#D8B66A',
       '#718078',
       '#9CB7A8'
     ]
@@ -553,6 +676,12 @@ export class ReportsComponent implements OnInit, OnDestroy {
     this.loadReports();
   }
 
+  setBreakdownType(type: 'Expense' | 'Income'): void {
+    this.breakdownType.set(type);
+    const filter = this.buildFilter();
+    this.loadBreakdown(filter);
+  }
+
   onPeriodChange(): void {
     this.loadReports();
   }
@@ -567,7 +696,7 @@ export class ReportsComponent implements OnInit, OnDestroy {
     this.loadReports();
   }
 
-  totalExpenseTransactions(): number {
+  totalTransactions(): number {
     return this.breakdown().reduce((acc, b) => acc + b.transactionCount, 0);
   }
 
@@ -591,13 +720,13 @@ export class ReportsComponent implements OnInit, OnDestroy {
     this.reportService.getSummary(filter).subscribe({
       next: (res) => {
         this.summary.set(res);
-      }
-    });
 
-    this.reportService.getExpenseBreakdown(filter).subscribe({
-      next: (res) => {
-        this.breakdown.set(res);
-        setTimeout(() => this.renderBreakdownChart(), 50);
+        // Auto-switch to Income if user has Income but no Expenses
+        if (res.totalExpenses === 0 && res.totalIncome > 0 && this.breakdownType() === 'Expense') {
+          this.breakdownType.set('Income');
+        }
+
+        this.loadBreakdown(filter);
       }
     });
 
@@ -607,7 +736,16 @@ export class ReportsComponent implements OnInit, OnDestroy {
         this.trends.set(res);
         const hasData = res.some(t => t.income > 0 || t.expenses > 0);
         this.hasTrendsData.set(hasData);
-        setTimeout(() => this.renderTrendChart(), 50);
+        setTimeout(() => this.renderTrendChart(), 60);
+      }
+    });
+  }
+
+  private loadBreakdown(filter: ReportFilter): void {
+    this.reportService.getCategoryBreakdown(filter, this.breakdownType()).subscribe({
+      next: (res) => {
+        this.breakdown.set(res);
+        setTimeout(() => this.renderBreakdownChart(), 60);
       }
     });
   }
@@ -730,7 +868,10 @@ export class ReportsComponent implements OnInit, OnDestroy {
 
     const labels = breakdown.map(b => b.category);
     const data = breakdown.map(b => b.totalAmount);
-    const colors = this.palette.doughnutColors.slice(0, breakdown.length);
+    const colorList = this.breakdownType() === 'Income'
+      ? this.palette.incomeDoughnutColors
+      : this.palette.doughnutColors;
+    const colors = colorList.slice(0, breakdown.length);
 
     const ctx = this.breakdownChartCanvas.nativeElement.getContext('2d');
     if (!ctx) return;
@@ -777,5 +918,17 @@ export class ReportsComponent implements OnInit, OnDestroy {
         }
       }
     });
+  }
+
+  openAddModal(): void {
+    this.addModalOpen.set(true);
+  }
+
+  closeAddModal(): void {
+    this.addModalOpen.set(false);
+  }
+
+  onTransactionSaved(): void {
+    this.loadReports();
   }
 }
